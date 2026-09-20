@@ -1,3 +1,17 @@
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.3.1)
+set(toolchainVersion 15_2_Rel1)
+set(picotoolVersion 2.3.1)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 fruit-bat
 cmake_minimum_required(VERSION 3.12)
@@ -27,6 +41,12 @@ cmake_policy(VERSION 3.12)
 
 # Pull in PICO SDK (must be before project)
 include(pico_sdk_import.cmake)
+
+# Pico Extras is cloned beside pico-zxspectrum
+set(PICO_EXTRAS_PATH
+    "${CMAKE_CURRENT_LIST_DIR}/../pico-extras"
+    CACHE PATH "Path to pico-extras" FORCE
+)
 
 # We also need PICO EXTRAS
 include(pico_extras_import.cmake)

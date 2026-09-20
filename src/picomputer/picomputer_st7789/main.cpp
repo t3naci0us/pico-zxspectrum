@@ -194,7 +194,9 @@ void __not_in_flash_func(setMenuState)(bool showMenu) {
 }
 
 void __not_in_flash_func(ZxRenderLoopCallbackLine)(int32_t y) {
+#ifdef USE_KEY_MATRIX
   zx_keyscan_row();
+#endif
 }
 
 void __not_in_flash_func(ZxRenderLoopCallbackMenu)(bool state) {
@@ -226,16 +228,19 @@ void __not_in_flash_func(main_loop)() {
 
   while(1){
 
-    if (c++ & 1) {
-      tuh_task();
-      process_joystick();
-    }
-    else {
-      hid_keyboard_report_t const *curr;
-      hid_keyboard_report_t const *prev;
-      zx_keyscan_get_hid_reports(&curr, &prev);
-      process_picomputer_kbd_report(curr, prev);
-    }
+if (c++ & 1) {
+  tuh_task();
+  process_joystick();
+}
+else {
+#ifdef USE_KEY_MATRIX
+  hid_keyboard_report_t const *curr;
+  hid_keyboard_report_t const *prev;
+
+  zx_keyscan_get_hid_reports(&curr, &prev);
+  process_picomputer_kbd_report(curr, prev);
+#endif
+}
     if (!showMenu) {
       for (int i = 1; i < 100; ++i) {
         if (lastInterruptFrame != _frames) {
