@@ -106,6 +106,94 @@ pico_enable_stdio_uart(ZxSpectrumPicomputerZX 0)
 # create map/bin/hex file etc.
 pico_add_extra_outputs(ZxSpectrumPicomputerZX)
 
+# ============================================================
+# BigNik ZX Spectrum Handheld
+# RP2040 + ILI9341 + custom 8x8 keyboard matrix
+# ============================================================
+
+add_executable(ZxSpectrumHandheldILI9341
+  ${zxspectrum_common_src}
+  ${picomputer_common_src}
+  ${zxspectrum_st7789_lcd_src}
+  main.cpp
+  st7789_lcd.cpp
+  pzx_prepare_rgb444_scanline.cpp
+)
+
+zxspectrum_generate_pio_headers(ZxSpectrumHandheldILI9341)
+
+target_compile_definitions(ZxSpectrumHandheldILI9341 PRIVATE
+  FF_USE_FIND=1
+
+# Custom SD pins - kept completely clear of keyboard
+SDCARD_PIO=pio1
+SDCARD_PIO_SM=1
+
+SDCARD_PIN_SPI0_CS=22
+SDCARD_PIN_SPI0_SCK=28
+SDCARD_PIN_SPI0_MOSI=27
+SDCARD_PIN_SPI0_MISO=16
+
+PICO_CORE1_STACK_SIZE=0x800
+
+  # Menu/display layout for 320x240 LCD
+  PCS_COLS=40
+  PCS_ROWS=30
+
+  SZ_WIZ_ML=0
+  SZ_WIZ_CW1=13
+  SZ_WIZ_CW2=18
+
+  LCD_SZ_FRAME_COLS=34
+  LCD_SZ_FRAME_ROWS=23
+  LCD_SZ_FRAME_X=3
+  LCD_SZ_FRAME_Y=3
+
+  SZ_MENU_SEP=1
+  SZ_FILE_SEP=1
+  SZ_FILE_ROWS=11
+
+  # Audio
+  PICO_PIO_PWM_AUDIO
+  PICO_AUDIO_PWM_PIO=pio1
+  SPK_PIN=21
+
+  # Use the existing LCD-only Picomputer framework
+  PICOMPUTER_ZX
+
+  # Our custom keyboard profile
+  ZX_HANDHELD
+  USE_KEY_MATRIX
+
+  # LCD
+  PICO_ST7789_LCD
+  LCD_NO_BL
+
+  LCD_PIN_CLK=18
+  LCD_PIN_DC=20
+  LCD_PIN_CS=17
+  LCD_PIN_DIN=19
+
+  # ILI9341 colour settings
+  LCD_INVERSE
+  LCD_RGB
+)
+
+target_link_libraries(ZxSpectrumHandheldILI9341
+  ${zxspectrum_common_libs}
+  pico_emu_utils
+  pico_st7789_menu
+  tinyusb_host
+  tinyusb_board
+  hardware_pio
+  hardware_pwm
+)
+
+pico_enable_stdio_usb(ZxSpectrumHandheldILI9341 0)
+pico_enable_stdio_uart(ZxSpectrumHandheldILI9341 0)
+
+pico_add_extra_outputs(ZxSpectrumHandheldILI9341)
+
 set(picomputer_zx_lcd_src
   ${zxspectrum_common_src}
   ${picomputer_common_src}
@@ -154,7 +242,7 @@ set(picomputer_zx_lcd_common_defines PRIVATE
   ${picomputer_common_defines}
   PICO_PIO_PWM_AUDIO
   PICO_AUDIO_PWM_PIO=pio1
-  SPK_PIN=7
+  SPK_PIN=21
   PICOMPUTER_PICOZX
   PICOMPUTER_PICOZX_LCD
   INITIAL_VOL=0x30
@@ -255,6 +343,9 @@ target_compile_definitions(ZxSpectrumPicomputerZxILI9341Lcd_640x480x60Hz PRIVATE
   ${zxspectrum_zx_lcd_640x480x60Hz_defines}
   LCD_INVERSE
   LCD_RGB
+
+  USE_KEY_MATRIX
+  ZX_HANDHELD
 )
 
 target_compile_definitions(ZxSpectrumPicomputerZx2Lcd_720x576x50Hz PRIVATE

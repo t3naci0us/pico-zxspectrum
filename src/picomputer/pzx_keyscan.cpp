@@ -90,7 +90,29 @@
     #define CN CN_PZX
   #endif
 #endif
+#ifdef ZX_HANDHELD
 
+// BigNik ZX Handheld
+// 8 rows: GP0-GP7
+// 8 columns: GP8-GP15
+
+#undef CP
+#undef RP
+#undef CP_JOIN
+#undef CP_SHIFT
+#undef RN
+#undef CN
+
+#define CP 8, 9, 10, 11, 12, 13, 14, 15
+#define RP 0, 1, 2, 3, 4, 5, 6, 7
+
+#define CP_SHIFT 8
+#define CP_JOIN(a) ((a) & 0xFF)
+
+#define RN 8
+#define CN 8
+
+#endif
 static uint8_t cp[] = {CP};                      // Column pins
 static uint8_t rp[] = {RP};                      // Row pins
 static uint8_t rs[RN][SAMPLES];                  // Oversampled pins
@@ -111,7 +133,26 @@ bool zx_menu_mode() {
 }
 
 // Keyboard Matrix Arrays [INDEX][ROWS][COLS]
-#ifdef PICOMPUTER_PICOZX
+#ifdef ZX_HANDHELD
+
+#define JOYSTICK_OFFSET 0
+
+static uint8_t kbits[1][8][8] = {
+  {
+    // C0                 C1                 C2                 C3                 C4                 C5  C6  C7
+    { 0,                  HID_KEY_Z,         HID_KEY_X,         HID_KEY_C,         HID_KEY_V,         0,  0,  HID_KEY_F1 }, // R0
+    { HID_KEY_A,          HID_KEY_S,         HID_KEY_D,         HID_KEY_F,         HID_KEY_G,         0,  0,  0 },          // R1
+    { HID_KEY_Q,          HID_KEY_W,         HID_KEY_E,         HID_KEY_R,         HID_KEY_T,         0,  0,  0 },          // R2
+    { HID_KEY_1,          HID_KEY_2,         HID_KEY_3,         HID_KEY_4,         HID_KEY_5,         0,  0,  0 },          // R3
+    { HID_KEY_0,          HID_KEY_9,         HID_KEY_8,         HID_KEY_7,         HID_KEY_6,         0,  0,  0 },          // R4
+    { HID_KEY_P,          HID_KEY_O,         HID_KEY_I,         HID_KEY_U,         HID_KEY_Y,         0,  0,  0 },          // R5
+    { HID_KEY_ENTER,      HID_KEY_L,         HID_KEY_K,         HID_KEY_J,         HID_KEY_H,         0,  0,  0 },          // R6
+    { HID_KEY_SPACE,      HID_KEY_ALT_RIGHT, HID_KEY_M,         HID_KEY_N,         HID_KEY_B,         0,  0,  0 }           // R7
+  }
+};
+
+#elif defined(PICOMPUTER_PICOZX)
+
 #define JOYSTICK_OFFSET 2
 #ifdef REAL_ZXKEYBOARD
 static uint8_t kbits[6][6][8] = { 
@@ -333,7 +374,31 @@ static uint8_t kbits[5][6][6] = {
 #endif
 
 #define COL_TO_BIT(col) (1<<(col-1))
-#if defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
+#if defined(ZX_HANDHELD)
+
+  // CAPS SHIFT = Row 0, Column 0
+  #define KEY_SHIFT_ROW 0
+  #define KEY_SHIFT_BIT 0x01
+
+  // No joystick controls assigned yet.
+  // These still need to exist because zx_kempston()
+  // references them at compile time.
+  #define KEY_FIRE_ROW  0
+  #define KEY_FIRE_BIT  0x00
+
+  #define KEY_UP_ROW    0
+  #define KEY_UP_BIT    0x00
+
+  #define KEY_DOWN_ROW  0
+  #define KEY_DOWN_BIT  0x00
+
+  #define KEY_LEFT_ROW  0
+  #define KEY_LEFT_BIT  0x00
+
+  #define KEY_RIGHT_ROW 0
+  #define KEY_RIGHT_BIT 0x00
+
+#elif defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
   #define KEY_ALT_ROW 5
   #define KEY_ALT_BIT 0x20
   #define KEY_FIRE_ROW 4
@@ -533,7 +598,7 @@ void __not_in_flash_func(zx_keyscan_get_hid_reports)(hid_keyboard_report_t const
   // Key modifier (shift, alt, ctrl, etc.)
   static uint8_t modifier = 0;
 
-#if defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
+#if !defined(ZX_HANDHELD) && (defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP))
   
   bool alt_down = rdb[KEY_ALT_ROW] & KEY_ALT_BIT;
   
@@ -584,14 +649,18 @@ void __not_in_flash_func(zx_keyscan_get_hid_reports)(hid_keyboard_report_t const
     }
   }
   #endif
+  #ifdef ZX_HANDHELD
+  kbi = 0;
+#else
   kbi = (menu ? 4 : kempstonJoystick) + (shift ? 1 : 0 );
+#endif
 #endif
   
   // Build the current hid report
   uint32_t ki = 0;
   hid_keyboard_report_t *chr = &hr[hri & 1];
   chr->modifier = modifier;
-#if defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
+#if !defined(ZX_HANDHELD) && (defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP))
   // Press ctrl for quick save
   if (alt_down && (((rdb[0] | rdb[1] | rdb[2]) & 31) != 0)) chr->modifier |= 1;
 #else
@@ -608,7 +677,7 @@ void __not_in_flash_func(zx_keyscan_get_hid_reports)(hid_keyboard_report_t const
           while(ki < sizeof(chr->keycode)) chr->keycode[ki++] = 1;
           break;  
         }
-#if defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
+#if !defined(ZX_HANDHELD) && (defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP))
         uint8_t kc = kbits[alt_down ? 4 : kbi][ri][ci];
 #else
         uint8_t kc = kbits[kbi][ri][ci];
