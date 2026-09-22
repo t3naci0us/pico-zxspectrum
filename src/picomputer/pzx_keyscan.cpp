@@ -137,43 +137,50 @@ bool zx_menu_mode() {
 
 #define JOYSTICK_OFFSET 0
 
-// BigNik ZX Handheld 8x8 matrix
+// BigNik ZX Handheld - PCB Rev A matrix
 //
 // Columns:
 // C0 GP8, C1 GP9, C2 GP10, C3 GP11, C4 GP12, C5 GP13, C6 GP14, C7 GP15
 //
 // Rows:
-// R0 GP0, R1 GP1, R2 GP2, R3 GP3, R4 GP4, R5 GP5, R6 GP6, R7 GP7
+// R0 GP0: MENU, BACK, FN, MUTE, 48K, 128K, GRAPH, DELETE
+// R1 GP1: 1, 2, 3, 4, 5, 6, 7, 8
+// R2 GP2: 9, 0, Q, W, E, R, T, Y
+// R3 GP3: U, I, O, P, TRUE VIDEO, INV VIDEO, EDIT, A
+// R4 GP4: S, D, F, G, H, J, K, L
+// R5 GP5: ENTER, CAPS LOCK, Z, X, C, V, B, N
+// R6 GP6: M, EXT MODE, BREAK, CAPS SHIFT, SYMBOL SHIFT, ;, ", ,
+// R7 GP7: ., SPACE, LEFT, DOWN, UP, RIGHT, spare, spare
 //
 // Layer 0 = normal
 // Layer 1 = FN held
 //
-// Dedicated +2 keys that are electrically "combinations" are translated below
-// by adding the appropriate HID modifier while emitting the underlying key.
+// Spectrum+/128/+2 dedicated keys that are really key combinations are
+// translated below by applying the appropriate HID modifier.
 
 static uint8_t kbits[2][8][8] = {
   {
-    // C0                 C1                 C2                 C3                 C4                 C5                 C6                    C7
-    { 0,                  HID_KEY_Z,         HID_KEY_X,         HID_KEY_C,         HID_KEY_V,         HID_KEY_1,         HID_KEY_ARROW_LEFT,    HID_KEY_F1 },        // R0: CAPS, Z X C V, EDIT, LEFT, MENU
-    { HID_KEY_A,          HID_KEY_S,         HID_KEY_D,         HID_KEY_F,         HID_KEY_G,         HID_KEY_2,         HID_KEY_ARROW_DOWN,    HID_KEY_ESCAPE },    // R1: A S D F G, CAPS LOCK, DOWN, BACK
-    { HID_KEY_Q,          HID_KEY_W,         HID_KEY_E,         HID_KEY_R,         HID_KEY_T,         HID_KEY_3,         HID_KEY_ARROW_UP,      0 },                 // R2: Q W E R T, TRUE VIDEO, UP, FN
-    { HID_KEY_1,          HID_KEY_2,         HID_KEY_3,         HID_KEY_4,         HID_KEY_5,         HID_KEY_4,         HID_KEY_ARROW_RIGHT,   HID_KEY_F3 },        // R3: 1 2 3 4 5, INV VIDEO, RIGHT, MUTE
-    { HID_KEY_0,          HID_KEY_9,         HID_KEY_8,         HID_KEY_7,         HID_KEY_6,         HID_KEY_9,         HID_KEY_BACKSPACE,     HID_KEY_F11 },       // R4: 0 9 8 7 6, GRAPH, DELETE, RESET48
-    { HID_KEY_P,          HID_KEY_O,         HID_KEY_I,         HID_KEY_U,         HID_KEY_Y,         HID_KEY_ALT_RIGHT, HID_KEY_COMMA,         HID_KEY_F12 },       // R5: P O I U Y, EXT MODE, comma, RESET128
-    { HID_KEY_ENTER,      HID_KEY_L,         HID_KEY_K,         HID_KEY_J,         HID_KEY_H,         HID_KEY_SPACE,     HID_KEY_PERIOD,        0 },                 // R6: ENTER L K J H, BREAK, period, CAPS R
-    { HID_KEY_SPACE,      HID_KEY_ALT_RIGHT, HID_KEY_M,         HID_KEY_N,         HID_KEY_B,         HID_KEY_SEMICOLON, HID_KEY_APOSTROPHE,    HID_KEY_ALT_RIGHT }  // R7: SPACE, SYM, M N B, ; " , SYM R
+    // C0                   C1                   C2                   C3                   C4                   C5                   C6                    C7
+    { HID_KEY_F1,           HID_KEY_ESCAPE,      0,                   HID_KEY_F3,           HID_KEY_F11,          HID_KEY_F12,          HID_KEY_9,             HID_KEY_BACKSPACE }, // R0
+    { HID_KEY_1,            HID_KEY_2,           HID_KEY_3,           HID_KEY_4,            HID_KEY_5,            HID_KEY_6,            HID_KEY_7,             HID_KEY_8 },         // R1
+    { HID_KEY_9,            HID_KEY_0,           HID_KEY_Q,           HID_KEY_W,            HID_KEY_E,            HID_KEY_R,            HID_KEY_T,             HID_KEY_Y },         // R2
+    { HID_KEY_U,            HID_KEY_I,           HID_KEY_O,           HID_KEY_P,            HID_KEY_3,            HID_KEY_4,            HID_KEY_1,             HID_KEY_A },         // R3
+    { HID_KEY_S,            HID_KEY_D,           HID_KEY_F,           HID_KEY_G,            HID_KEY_H,            HID_KEY_J,            HID_KEY_K,             HID_KEY_L },         // R4
+    { HID_KEY_ENTER,        HID_KEY_2,           HID_KEY_Z,           HID_KEY_X,            HID_KEY_C,            HID_KEY_V,            HID_KEY_B,             HID_KEY_N },         // R5
+    { HID_KEY_M,            HID_KEY_ALT_RIGHT,   HID_KEY_SPACE,       0,                    HID_KEY_ALT_RIGHT,    HID_KEY_SEMICOLON,    HID_KEY_APOSTROPHE,    HID_KEY_COMMA },     // R6
+    { HID_KEY_PERIOD,       HID_KEY_SPACE,       HID_KEY_ARROW_LEFT,  HID_KEY_ARROW_DOWN,   HID_KEY_ARROW_UP,     HID_KEY_ARROW_RIGHT,  0,                     0 }                  // R7
   },
   {
-    // FN layer. Most keys stay normal; selected keys become emulator controls.
-    // C0                 C1                 C2                 C3                 C4                 C5                 C6                    C7
-    { 0,                  HID_KEY_Z,         HID_KEY_X,         HID_KEY_C,         HID_KEY_V,         HID_KEY_1,         HID_KEY_F9,            HID_KEY_F1 },        // FN+LEFT = previous snapshot
-    { HID_KEY_A,          HID_KEY_S,         HID_KEY_D,         HID_KEY_F,         HID_KEY_G,         HID_KEY_2,         HID_KEY_PAGE_DOWN,     HID_KEY_ESCAPE },    // FN+DOWN = page down
-    { HID_KEY_Q,          HID_KEY_W,         HID_KEY_E,         HID_KEY_R,         HID_KEY_T,         HID_KEY_3,         HID_KEY_PAGE_UP,       0 },                 // FN+UP = page up
-    { HID_KEY_1,          HID_KEY_2,         HID_KEY_3,         HID_KEY_4,         HID_KEY_5,         HID_KEY_4,         HID_KEY_F10,           HID_KEY_F4 },        // FN+RIGHT = next snapshot, FN+MUTE = speed
-    { HID_KEY_0,          HID_KEY_9,         HID_KEY_8,         HID_KEY_7,         HID_KEY_6,         HID_KEY_9,         HID_KEY_BACKSPACE,     HID_KEY_F11 },
-    { HID_KEY_P,          HID_KEY_O,         HID_KEY_I,         HID_KEY_U,         HID_KEY_Y,         HID_KEY_ALT_RIGHT, HID_KEY_COMMA,         HID_KEY_F12 },
-    { HID_KEY_F8,         HID_KEY_L,         HID_KEY_K,         HID_KEY_J,         HID_KEY_H,         HID_KEY_SPACE,     HID_KEY_PERIOD,        0 },                 // FN+ENTER = reload snapshot
-    { HID_KEY_SPACE,      HID_KEY_ALT_RIGHT, HID_KEY_M,         HID_KEY_N,         HID_KEY_B,         HID_KEY_SEMICOLON, HID_KEY_APOSTROPHE,    HID_KEY_ALT_RIGHT }
+    // FN layer. Most keys remain unchanged; selected keys become emulator controls.
+    // C0                   C1                   C2                   C3                   C4                   C5                   C6                    C7
+    { HID_KEY_F1,           HID_KEY_ESCAPE,      0,                   HID_KEY_F4,           HID_KEY_F11,          HID_KEY_F12,          HID_KEY_9,             HID_KEY_BACKSPACE }, // R0: FN+MUTE = speed
+    { HID_KEY_1,            HID_KEY_2,           HID_KEY_3,           HID_KEY_4,            HID_KEY_5,            HID_KEY_6,            HID_KEY_7,             HID_KEY_8 },         // R1
+    { HID_KEY_9,            HID_KEY_0,           HID_KEY_Q,           HID_KEY_W,            HID_KEY_E,            HID_KEY_R,            HID_KEY_T,             HID_KEY_Y },         // R2
+    { HID_KEY_U,            HID_KEY_I,           HID_KEY_O,           HID_KEY_P,            HID_KEY_3,            HID_KEY_4,            HID_KEY_1,             HID_KEY_A },         // R3
+    { HID_KEY_S,            HID_KEY_D,           HID_KEY_F,           HID_KEY_G,            HID_KEY_H,            HID_KEY_J,            HID_KEY_K,             HID_KEY_L },         // R4
+    { HID_KEY_F8,           HID_KEY_2,           HID_KEY_Z,           HID_KEY_X,            HID_KEY_C,            HID_KEY_V,            HID_KEY_B,             HID_KEY_N },         // R5: FN+ENTER = reload snapshot
+    { HID_KEY_M,            HID_KEY_ALT_RIGHT,   HID_KEY_SPACE,       0,                    HID_KEY_ALT_RIGHT,    HID_KEY_SEMICOLON,    HID_KEY_APOSTROPHE,    HID_KEY_COMMA },     // R6
+    { HID_KEY_PERIOD,       HID_KEY_SPACE,       HID_KEY_F9,          HID_KEY_PAGE_DOWN,    HID_KEY_PAGE_UP,      HID_KEY_F10,          0,                     0 }                  // R7: FN+arrows
   }
 };
 
@@ -402,58 +409,53 @@ static uint8_t kbits[5][6][6] = {
 #define COL_TO_BIT(col) (1<<(col-1))
 #if defined(ZX_HANDHELD)
 
-  // CAPS SHIFT = Row 0, Column 0
-  #define KEY_SHIFT_ROW 0
-  #define KEY_SHIFT_BIT 0x01
+  // PCB Rev A dedicated-key positions
+  #define KEY_SHIFT_ROW      6
+  #define KEY_SHIFT_BIT      0x08  // R6 C3
 
-  // Additional handheld matrix positions
-  #define KEY_SHIFT_R_ROW 6
-  #define KEY_SHIFT_R_BIT 0x80
+  #define KEY_FN_ROW         0
+  #define KEY_FN_BIT         0x04  // R0 C2
 
-  #define KEY_FN_ROW      2
-  #define KEY_FN_BIT      0x80
+  #define KEY_EDIT_ROW       3
+  #define KEY_EDIT_BIT       0x40  // R3 C6
 
-  #define KEY_EDIT_ROW    0
-  #define KEY_EDIT_BIT    0x20
+  #define KEY_CAPSLOCK_ROW   5
+  #define KEY_CAPSLOCK_BIT   0x02  // R5 C1
 
-  #define KEY_CAPSLOCK_ROW 1
-  #define KEY_CAPSLOCK_BIT 0x20
+  #define KEY_TRUEVIDEO_ROW  3
+  #define KEY_TRUEVIDEO_BIT  0x10  // R3 C4
 
-  #define KEY_TRUEVIDEO_ROW 2
-  #define KEY_TRUEVIDEO_BIT 0x20
+  #define KEY_INVVIDEO_ROW   3
+  #define KEY_INVVIDEO_BIT   0x20  // R3 C5
 
-  #define KEY_INVVIDEO_ROW 3
-  #define KEY_INVVIDEO_BIT 0x20
+  #define KEY_GRAPH_ROW      0
+  #define KEY_GRAPH_BIT      0x40  // R0 C6
 
-  #define KEY_GRAPH_ROW   4
-  #define KEY_GRAPH_BIT   0x20
+  #define KEY_EXTEND_ROW     6
+  #define KEY_EXTEND_BIT     0x02  // R6 C1
 
-  #define KEY_EXTEND_ROW  5
-  #define KEY_EXTEND_BIT  0x20
+  #define KEY_BREAK_ROW      6
+  #define KEY_BREAK_BIT      0x04  // R6 C2
 
-  #define KEY_BREAK_ROW   6
-  #define KEY_BREAK_BIT   0x20
+  #define KEY_QUOTE_ROW      6
+  #define KEY_QUOTE_BIT      0x40  // R6 C6
 
-  #define KEY_QUOTE_ROW   7
-  #define KEY_QUOTE_BIT   0x40
+  // No matrix joystick controls are assigned yet. These remain because
+  // zx_kempston() references them at compile time.
+  #define KEY_FIRE_ROW       0
+  #define KEY_FIRE_BIT       0x00
 
-  // No joystick controls assigned yet.
-  // These still need to exist because zx_kempston()
-  // references them at compile time.
-  #define KEY_FIRE_ROW  0
-  #define KEY_FIRE_BIT  0x00
+  #define KEY_UP_ROW         0
+  #define KEY_UP_BIT         0x00
 
-  #define KEY_UP_ROW    0
-  #define KEY_UP_BIT    0x00
+  #define KEY_DOWN_ROW       0
+  #define KEY_DOWN_BIT       0x00
 
-  #define KEY_DOWN_ROW  0
-  #define KEY_DOWN_BIT  0x00
+  #define KEY_LEFT_ROW       0
+  #define KEY_LEFT_BIT       0x00
 
-  #define KEY_LEFT_ROW  0
-  #define KEY_LEFT_BIT  0x00
-
-  #define KEY_RIGHT_ROW 0
-  #define KEY_RIGHT_BIT 0x00
+  #define KEY_RIGHT_ROW      0
+  #define KEY_RIGHT_BIT      0x00
 
 #elif defined(PICOMPUTER_MAX) || defined(PICOMPUTER_ZX) || defined(PICOMPUTER_VGA) || defined(PICOMPUTER_FLIP)
   #define KEY_ALT_ROW 5
@@ -696,9 +698,6 @@ void __not_in_flash_func(zx_keyscan_get_hid_reports)(hid_keyboard_report_t const
   bool shift = rdb[KEY_SHIFT_ROW] & KEY_SHIFT_BIT;
 
 #ifdef ZX_HANDHELD
-  // Either CAPS SHIFT key acts as the HID shift modifier.
-  shift = shift || ((rdb[KEY_SHIFT_R_ROW] & KEY_SHIFT_R_BIT) != 0);
-
   // FN selects the second handheld key-map layer.
   bool fn_down = (rdb[KEY_FN_ROW] & KEY_FN_BIT) != 0;
   kbi = fn_down ? 1 : 0;
